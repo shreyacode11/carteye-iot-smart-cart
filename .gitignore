@@ -1,0 +1,15 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Build / cache folders
+dist/
+build/
+.vite/
+firebase-debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
