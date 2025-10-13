@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Smart Cart Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; background: #f7f7fb; }
+    h2 { text-align: center; }
+    #status { margin-bottom: 12px; color: #333; font-size: 18px; text-align: center; }
+    .cart { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .card { background: white; padding: 12px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 220px; text-align: center; }
+    .card img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 8px; }
+    .title { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+    .row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 14px; }
+    .price { color: #0a7bff; font-weight: 700; }
+    .empty-cart { text-align: center; font-size: 18px; color: #777; margin-top: 50px; }
+  </style>
+</head>
+<body>
+  <h2>CARTEYE </h2>
+  <div id="status">Waiting for sensor...</div>
+  <div class="cart" id="cart"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script>
+    // ---------- FIREBASE CONFIG ----------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBqdaccX7faYH6vXnDmYcbPfRyoYHJYUcA",
+      authDomain: "smartcart6.firebaseapp.com",
+      databaseURL: "https://smartcart6-default-rtdb.firebaseio.com",
+      projectId: "smartcart6",
+      storageBucket: "smartcart6.firebasestorage.app",
+      messagingSenderId: "317170991723",
+      appId: "1:317170991723:web:e9e133adcb539da341272e",
+      measurementId: "G-DTEK53LQYZ"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Cart storage
+    const cart = {};
+
+    // Item definitions
+    const PRICE_LIST = {
+      bottle: { name: "Bottle", unit_price: 20, img: "images/waterbottle.png" },
+      pasta:  { name: "Powebank",  unit_price: 120, img: "images/powerbank.png" } // add pasta image in "images/pasta.png"
+    };
+
+    // Classify item based on weight and height
+    function classifyItem(weight, height) {
+      if (weight >= 1 && weight <= 30 && height >= 3 && height <=10) return "bottle";
+       if (weight >= 20 && weight <= 60 && height >= 11&& height <=20) return "pasta";
+      return null;
+    }
+
+    function addItemToCart(itemId) {
+      if (!itemId) return;
+      if (!cart[itemId]) cart[itemId] = { ...PRICE_LIST[itemId], qty: 1 };
+      else cart[itemId].qty += 1;
+      renderCart();
+    }
+
+    function removeItemFromCart(itemId) {
+      if (!cart[itemId]) return;
+      cart[itemId].qty -= 1;
+      if (cart[itemId].qty <= 0) delete cart[itemId];
+      renderCart();
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cart');
+      container.innerHTML = '';
+      let grandTotal = 0;
+      const itemIds = Object.keys(cart);
+
+      if (itemIds.length === 0) {
+        container.innerHTML = '<div class="empty-cart">🛒 Start shopping!</div>';
+        document.getElementById('status').innerText = '';
+        return;
+      }
+
+      for (const id of itemIds) {
+        const it = cart[id];
+        const total = it.qty * it.unit_price;
+        grandTotal += total;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${it.img}" alt="${it.name}" />
+          <div class="title">${it.name}</div>
+          <div class="row"><div>Qty: ${it.qty}</div><div class="price">₹ ${total}</div></div>
+        `;
+        container.appendChild(card);
+      }
+      document.getElementById('status').innerText = `Grand total: ₹ ${grandTotal}`;
+    }
+
+    // Listen for sensor updates from Firebase
+    const sensorRef = db.ref('sensors/latest');
+    let lastWeights = [];
+    let lastActionTime = 0;
+
+    sensorRef.on('value', snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      let weight = Number(data.weight || 0);
+      let height = Number(data.height || -1);
+
+      const now = Date.now();
+      lastWeights.push(weight);
+      if (lastWeights.length > 6) lastWeights.shift();
+      const avgWeight = lastWeights.reduce((a,b)=>a+b,0)/lastWeights.length;
+
+      // Add item if weight matches
+      if (avgWeight > 5 && now - lastActionTime > 1500) {
+        const itemId = classifyItem(avgWeight, height);
+        if (itemId) {
+          addItemToCart(itemId);
+          lastActionTime = now;
+        }
+      }
+
+      // Remove item if weight is 0
+      if (avgWeight < 5 && now - lastActionTime > 1500) {
+        Object.keys(cart).forEach(item => removeItemFromCart(item));
+        lastActionTime = now;
+      }
+    });
+  </script>
+</body>
+</html>
