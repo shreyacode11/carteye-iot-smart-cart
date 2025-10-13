@@ -1,4 +1,4 @@
-# Smart Cart 🛒
+# CartEye 🛒
 
 A smart shopping cart system integrating **Arduino sensors**, **Firebase**, and a **web app** to monitor items in real-time.
 
