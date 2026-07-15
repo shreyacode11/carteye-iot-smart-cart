@@ -154,11 +154,7 @@ CartEye/
 
 ---
 
-## Hardware Setup
 
-![](assets/hardware.jpg)
-
----
 
 # ⚙️ How It Works
 
